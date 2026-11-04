@@ -1,247 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- PWA Web App Manifest (Inline Blob Strategy) -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#18181b">
+
+<script>
+  // Dynamically inject web manifest for Chrome PWA install support
+  const manifest = {
+    name: "U8 Football Tracker",
+    short_name: "U8 Tracker",
+    start_url: "./index.html",
+    display: "standalone",
+    background_color: "#18181b",
+    theme_color: "#18181b",
+    icons: [{
+      src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2318181b'/><circle cx='50' cy='50' r='30' fill='%23dc2626'/><text x='50' y='58' font-size='24' font-weight='bold' text-anchor='middle' fill='white'>U8</text></svg>",
+      sizes: "512x512",
+      type: "image/svg+xml",
+      purpose: "any maskable"
+    }]
+  };
+  const stringManifest = JSON.stringify(manifest);
+  const blob = new Blob([stringManifest], {type: 'application/json'});
+  const manifestURL = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = manifestURL;
+  document.head.appendChild(link);
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>U8 Football Match & Squad Tracker</title>
+    <title>U8 Grassroots Football Player Development & Tactical Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for in-browser JSX transformation -->
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel standalone for JSX processing -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            background-color: #09090b;
+        }
+        /* Grass Green Tactical Pitch Texture & Markings */
+        .football-pitch {
+            background-color: #15803d;
+            background-image: repeating-linear-gradient(
+                0deg,
+                #16a34a,
+                #16a34a 40px,
+                #15803d 40px,
+                #15803d 80px
+            );
+            position: relative;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6);
+        }
+        .pitch-line {
+            border-color: rgba(255, 255, 255, 0.75);
+        }
+        .slot-target {
+            transition: all 0.2s ease-in-out;
+        }
     </style>
 </head>
-<body>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const INITIAL_PLAYERS = [
-            { id: 1, name: "Charlie M", number: 1, pos: "GK", initials: "CM", active: true },
-            { id: 2, name: "Leo S", number: 2, pos: "DEF", initials: "LS", active: true },
-            { id: 3, name: "Archie B", number: 3, pos: "DEF", initials: "AB", active: true },
-            { id: 4, name: "Mason T", number: 4, pos: "MID", initials: "MT", active: true },
-            { id: 5, name: "Harry K", number: 5, pos: "MID", initials: "HK", active: true },
-            { id: 6, name: "Jude B", number: 6, pos: "FWD", initials: "JB", active: true },
-            { id: 7, name: "Ollie W", number: 7, pos: "SUB", initials: "OW", active: false },
-            { id: 8, name: "Noah R", number: 8, pos: "SUB", initials: "NR", active: false },
-            { id: 9, name: "Jack G", number: 9, pos: "SUB", initials: "JG", active: false },
+        const POSITION_CATEGORIES = ['General', 'GK (Goalkeeper)', 'DEF (Defender)', 'MID (Midfielder)', 'ATT (Attacker)'];
+
+        const SUPERPOWER_OPTIONS = [
+            '1v1 Dribbling', 'Passing Vision', 'Explosive Speed', 'Spatial Awareness',
+            'Relentless Tackling', 'Shot Power', 'Close Ball Control', 'Quick Turning',
+            'Composure on Ball', 'First Touch', 'Brave Shot Stopping'
         ];
 
-        function App() {
-            const [players, setPlayers] = useState(() => {
-                const saved = localStorage.getItem('u8_tracker_players');
-                return saved ? JSON.parse(saved) : INITIAL_PLAYERS;
-            });
+        const STRENGTH_OPTIONS = [
+            'Agility', 'Stamina', 'Bravery', 'Communication', 'Teamwork',
+            'Balance', 'Recovery Speed', 'Aerial / Heading', 'Positioning', 'Work Rate'
+        ];
 
-            const [selectedPlayer, setSelectedPlayer] = useState(null);
-            const [activeModal, setActiveModal] = useState(null);
-            const [exportText, setExportText] = useState("");
-            const [importText, setImportText] = useState("");
+        const FOCUS_AREA_OPTIONS = [
+            'Using Weaker Foot', 'Keeping Head Up Before Pass', 'Scanning Surroundings',
+            'Body Shape when Receiving', 'Tracking Back Quickly', 'Pressing High with Intent',
+            'Communicating "Man On"', 'Patience in 1v1s', 'Calling Loudly for the Ball'
+        ];
 
-            useEffect(() => {
-                localStorage.setItem('u8_tracker_players', JSON.stringify(players));
-            }, [players]);
-
-            const handlePlayerChange = (id, field, value) => {
-                setPlayers(players.map(p => {
-                    if (p.id !== id) return p;
-                    const updated = { ...p, [field]: value };
-                    if (field === 'name') {
-                        const parts = value.trim().split(/\s+/);
-                        if (parts.length >= 2) {
-                            updated.initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                        } else if (parts.length === 1 && parts[0].length > 0) {
-                            updated.initials = parts[0].substring(0, 2).toUpperCase();
-                        } else {
-                            updated.initials = "";
-                        }
-                    }
-                    return updated;
-                }));
-            };
-
-            const addPlayer = () => {
-                const newId = players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1;
-                setPlayers([...players, { id: newId, name: `Player ${newId}`, number: newId, pos: "SUB", initials: `P${newId}`, active: false }]);
-            };
-
-            const deletePlayer = (id) => {
-                setPlayers(players.filter(p => p.id !== id));
-                if (selectedPlayer?.id === id) setSelectedPlayer(null);
-            };
-
-            const handleCardClick = (player) => {
-                if (!selectedPlayer) {
-                    setSelectedPlayer(player);
-                } else {
-                    if (selectedPlayer.id === player.id) {
-                        setSelectedPlayer(null);
-                    } else {
-                        setPlayers(players.map(p => {
-                            if (p.id === selectedPlayer.id) return { ...p, pos: player.pos, active: player.active };
-                            if (p.id === player.id) return { ...p, pos: selectedPlayer.pos, active: selectedPlayer.active };
-                            return p;
-                        }));
-                        setSelectedPlayer(null);
-                    }
-                }
-            };
-
-            const exportData = () => setExportText(JSON.stringify(players, null, 2));
-
-            const importData = () => {
-                try {
-                    const parsed = JSON.parse(importText);
-                    if (Array.isArray(parsed)) {
-                        setPlayers(parsed);
-                        setActiveModal(null);
-                        setImportText("");
-                        alert("Data imported successfully!");
-                    } else {
-                        alert("Invalid format: Root must be an array.");
-                    }
-                } catch (e) {
-                    alert("Invalid JSON format.");
-                }
-            };
-
-            const downloadJSON = () => {
-                const blob = new Blob([JSON.stringify(players, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'u8-tracker-backup.json';
-                a.click();
-            };
-
-            const onFileImport = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const parsed = JSON.parse(event.target.result);
-                        if (Array.isArray(parsed)) {
-                            setPlayers(parsed);
-                            alert("Backup loaded successfully!");
-                        }
-                    } catch (err) {
-                        alert("Could not read JSON file.");
-                    }
-                };
-                reader.readAsText(file);
-            };
-
-            const starters = players.filter(p => p.active);
-            const subs = players.filter(p => !p.active);
-
-            return (
-                <div className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-900 p-3 select-none">
-                    <header className="flex justify-between items-center py-2 border-b border-slate-800 mb-3">
-                        <h1 className="text-sm font-bold text-white">U8 TRACKER</h1>
-                        <div className="flex gap-2">
-                            <button onClick={() => setActiveModal('profile')} className="bg-slate-800 text-xs px-2.5 py-1 rounded">Squad</button>
-                            <button onClick={() => { setActiveModal('data'); exportData(); }} className="bg-slate-800 text-xs px-2.5 py-1 rounded">Data</button>
-                        </div>
-                    </header>
-
-                    {selectedPlayer && (
-                        <div className="bg-amber-500/20 border border-amber-500/50 text-amber-200 px-3 py-1.5 rounded mb-3 flex justify-between items-center text-xs">
-                            <span>Swap target: <strong>{selectedPlayer.name}</strong></span>
-                            <button onClick={() => setSelectedPlayer(null)} className="bg-amber-600 px-2 py-0.5 rounded text-white">Cancel</button>
-                        </div>
-                    )}
-
-                    {/* Pitch */}
-                    <div className="bg-emerald-700 rounded-xl p-3 border border-emerald-600 flex flex-col justify-between mb-3 min-h-[300px]">
-                        <div className="grid grid-cols-3 gap-2 my-auto">
-                            {starters.map(player => {
-                                const isSelected = selectedPlayer?.id === player.id;
-                                return (
-                                    <div 
-                                        key={player.id}
-                                        onClick={() => handleCardClick(player)}
-                                        className={`flex flex-col items-center justify-center p-2 rounded cursor-pointer border ${isSelected ? 'bg-amber-400 text-slate-950 border-white' : 'bg-emerald-800 text-white border-emerald-500'}`}
-                                    >
-                                        <span className="text-[10px] font-bold">{player.number}</span>
-                                        <span className="text-xs font-bold truncate max-w-[70px]">{player.initials || player.name}</span>
-                                        <span className="text-[9px] opacity-80">{player.pos}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Subs */}
-                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 mb-3">
-                        <h2 className="text-xs font-bold text-slate-400 uppercase mb-2">Subs Bench</h2>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                            {subs.map(player => {
-                                const isSelected = selectedPlayer?.id === player.id;
-                                return (
-                                    <div 
-                                        key={player.id}
-                                        onClick={() => handleCardClick(player)}
-                                        className={`flex flex-col items-center justify-center p-2 rounded cursor-pointer min-w-[65px] border shrink-0 ${isSelected ? 'bg-amber-400 text-slate-950 border-white' : 'bg-slate-700 text-white border-slate-600'}`}
-                                    >
-                                        <span className="text-[10px] font-bold">{player.number}</span>
-                                        <span className="text-xs font-bold truncate max-w-[60px]">{player.initials || player.name}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Squad Modal */}
-                    {activeModal === 'profile' && (
-                        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-xl p-4 max-h-[85vh] flex flex-col">
-                                <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
-                                    <h2 className="text-sm font-bold">Squad</h2>
-                                    <button onClick={addPlayer} className="bg-emerald-600 text-xs px-2 py-1 rounded text-white">+ Add</button>
-                                </div>
-                                <div className="overflow-y-auto flex-1 space-y-2">
-                                    {players.map(p => (
-                                        <div key={p.id} className="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700">
-                                            <input type="number" value={p.number} onChange={(e) => handlePlayerChange(p.id, 'number', parseInt(e.target.value) || '')} className="w-10 bg-slate-900 text-center rounded text-xs py-1" />
-                                            <input type="text" value={p.name} onChange={(e) => handlePlayerChange(p.id, 'name', e.target.value)} className="flex-1 bg-slate-900 px-2 rounded text-xs py-1" />
-                                            <button onClick={() => handlePlayerChange(p.id, 'active', !p.active)} className={`text-xs px-2 py-1 rounded ${p.active ? 'bg-emerald-600' : 'bg-slate-700'}`}>{p.active ? 'On' : 'Bench'}</button>
-                                            <button onClick={() => deletePlayer(p.id)} className="bg-rose-900 text-rose-200 text-xs px-2 py-1 rounded">✕</button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button onClick={() => setActiveModal(null)} className="mt-3 bg-slate-800 text-xs py-2 rounded">Close</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Data Modal */}
-                    {activeModal === 'data' && (
-                        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-xl p-4 max-h-[85vh] flex flex-col">
-                                <h2 className="text-sm font-bold mb-2">Data</h2>
-                                <div className="space-y-3 flex-1 overflow-y-auto text-xs">
-                                    <button onClick={downloadJSON} className="w-full bg-blue-600 py-2 rounded text-white font-bold">Download JSON Backup</button>
-                                    <input type="file" accept=".json" onChange={onFileImport} className="text-xs" />
-                                    <textarea readOnly value={exportText} className="w-full h-20 bg-slate-950 font-mono p-2 rounded text-slate-300" />
-                                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste JSON here..." className="w-full h-20 bg-slate-950 font-mono p-2 rounded text-slate-300" />
-                                    <button onClick={importData} className="w-full bg-emerald-600 py-1.5 rounded text-white font-bold">Import Text</button>
-                                </div>
-                                <button onClick={() => setActiveModal(null)} className="mt-3 bg-slate-800 text-xs py-2 rounded">Close</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-</body>
-</html>
+        const FORMATIONS = {
+            '1-2-1': {
+                name: '1-2-1 (Diamond)',
+                team1: [
+                    { id: 't1_gk', role: 'GK', label: 'GK', x: 50, y: 8 },
+                    { id: 't1_cb', role: 'DEF', label: 'DEF', x: 50, y: 22 },
+                    { id: 't1_lm', role: 'LW', label: 'LW', x: 25, y: 34 },
+                    { id: 't1_rm', role: 'RW', label: 'RW', x: 75, y: 34 },
+                    { id: 't1_st', role: 'ST', label: 'ST', x: 50, y: 44 }
+                ],
+                team2: [
+                    { id: 't2_st', role: 'ST', label: 'ST', x: 50, y: 56 },
+                    { id: 't2_lm', role: 'LW', label: 'LW', x: 25, y: 66 },
+                    { id: 't2_rm', role: 'RW', label: 'RW', x: 75, y: 66 },
+                    { id: 't2_cb', role: 'DEF', label: 'DEF', x: 50, y: 78 },
+                    { id: 't2_gk', role: 'GK', label: 'GK', x: 50, y: 92 }
+                ]
+            },
+            '2-2': {
+                name: '2-2 (Square / Box
