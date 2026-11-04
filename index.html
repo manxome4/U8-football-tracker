@@ -21,7 +21,6 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Default initial state
         const INITIAL_PLAYERS = [
             { id: 1, name: "Charlie M", number: 1, pos: "GK", initials: "CM", active: true },
             { id: 2, name: "Leo S", number: 2, pos: "DEF", initials: "LS", active: true },
@@ -41,7 +40,7 @@
             });
 
             const [selectedPlayer, setSelectedPlayer] = useState(null);
-            const [activeModal, setActiveModal] = useState(null); // 'profile' or 'data'
+            const [activeModal, setActiveModal] = useState(null);
             const [exportText, setExportText] = useState("");
             const [importText, setImportText] = useState("");
 
@@ -49,7 +48,6 @@
                 localStorage.setItem('u8_tracker_players', JSON.stringify(players));
             }, [players]);
 
-            // Auto-derive initials when name changes
             const handlePlayerChange = (id, field, value) => {
                 setPlayers(players.map(p => {
                     if (p.id !== id) return p;
@@ -70,15 +68,7 @@
 
             const addPlayer = () => {
                 const newId = players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1;
-                const newPlayer = {
-                    id: newId,
-                    name: `Player ${newId}`,
-                    number: newId,
-                    pos: "SUB",
-                    initials: `P${newId}`,
-                    active: false
-                };
-                setPlayers([...players, newPlayer]);
+                setPlayers([...players, { id: newId, name: `Player ${newId}`, number: newId, pos: "SUB", initials: `P${newId}`, active: false }]);
             };
 
             const deletePlayer = (id) => {
@@ -93,14 +83,9 @@
                     if (selectedPlayer.id === player.id) {
                         setSelectedPlayer(null);
                     } else {
-                        // Swap positions/status between selected and clicked player
                         setPlayers(players.map(p => {
-                            if (p.id === selectedPlayer.id) {
-                                return { ...p, pos: player.pos, active: player.active };
-                            }
-                            if (p.id === player.id) {
-                                return { ...p, pos: selectedPlayer.pos, active: selectedPlayer.active };
-                            }
+                            if (p.id === selectedPlayer.id) return { ...p, pos: player.pos, active: player.active };
+                            if (p.id === player.id) return { ...p, pos: selectedPlayer.pos, active: selectedPlayer.active };
                             return p;
                         }));
                         setSelectedPlayer(null);
@@ -108,16 +93,7 @@
                 }
             };
 
-            const handleBackgroundClick = (e) => {
-                // Deselect if clicking directly on the pitch/bench container background
-                if (e.target === e.currentTarget) {
-                    setSelectedPlayer(null);
-                }
-            };
-
-            const exportData = () => {
-                setExportText(JSON.stringify(players, null, 2));
-            };
+            const exportData = () => setExportText(JSON.stringify(players, null, 2));
 
             const importData = () => {
                 try {
@@ -128,7 +104,7 @@
                         setImportText("");
                         alert("Data imported successfully!");
                     } else {
-                        alert("Invalid format: Root must be an array of players.");
+                        alert("Invalid format: Root must be an array.");
                     }
                 } catch (e) {
                     alert("Invalid JSON format.");
@@ -167,180 +143,97 @@
 
             return (
                 <div className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-900 p-3 select-none">
-                    {/* Header */}
                     <header className="flex justify-between items-center py-2 border-b border-slate-800 mb-3">
-                        <div>
-                            <h1 className="text-lg font-bold text-white tracking-wide">U8 FOOTBALL TRACKER</h1>
-                            <p className="text-xs text-slate-400">Tap player to select, tap another to swap</p>
-                        </div>
+                        <h1 className="text-sm font-bold text-white">U8 TRACKER</h1>
                         <div className="flex gap-2">
-                            <button 
-                                onClick={() => setActiveModal('profile')}
-                                className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700 font-medium">
-                                Squad
-                            </button>
-                            <button 
-                                onClick={() => { setActiveModal('data'); exportData(); }}
-                                className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700 font-medium">
-                                Data
-                            </button>
+                            <button onClick={() => setActiveModal('profile')} className="bg-slate-800 text-xs px-2.5 py-1 rounded">Squad</button>
+                            <button onClick={() => { setActiveModal('data'); exportData(); }} className="bg-slate-800 text-xs px-2.5 py-1 rounded">Data</button>
                         </div>
                     </header>
 
-                    {/* Selection Banner */}
                     {selectedPlayer && (
-                        <div className="bg-amber-500/20 border border-amber-500/50 text-amber-200 px-3 py-2 rounded-lg mb-3 flex justify-between items-center text-sm animate-pulse">
-                            <span>Selected: <strong>{selectedPlayer.name}</strong> ({selectedPlayer.initials})</span>
-                            <button onClick={() => setSelectedPlayer(null)} className="text-xs bg-amber-600 px-2 py-0.5 rounded text-white font-bold">Cancel</button>
+                        <div className="bg-amber-500/20 border border-amber-500/50 text-amber-200 px-3 py-1.5 rounded mb-3 flex justify-between items-center text-xs">
+                            <span>Swap target: <strong>{selectedPlayer.name}</strong></span>
+                            <button onClick={() => setSelectedPlayer(null)} className="bg-amber-600 px-2 py-0.5 rounded text-white">Cancel</button>
                         </div>
                     )}
 
-                    {/* Pitch View */}
-                    <div 
-                        onClick={handleBackgroundClick}
-                        className="relative bg-emerald-700 rounded-xl p-4 border-2 border-emerald-600 shadow-inner flex flex-col justify-between mb-4 min-h-[340px]"
-                    >
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <div className="w-24 h-24 border-2 border-white rounded-full"></div>
-                            <div className="absolute w-full h-[1px] bg-white"></div>
-                        </div>
-
-                        {/* Starters Grid */}
-                        <div className="grid grid-cols-3 gap-2 relative z-10 my-auto">
+                    {/* Pitch */}
+                    <div className="bg-emerald-700 rounded-xl p-3 border border-emerald-600 flex flex-col justify-between mb-3 min-h-[300px]">
+                        <div className="grid grid-cols-3 gap-2 my-auto">
                             {starters.map(player => {
                                 const isSelected = selectedPlayer?.id === player.id;
                                 return (
                                     <div 
                                         key={player.id}
-                                        onClick={(e) => { e.stopPropagation(); handleCardClick(player); }}
-                                        className={`flex flex-col items-center justify-center p-2.5 rounded-lg cursor-pointer transition-all border ${
-                                            isSelected 
-                                                ? 'bg-amber-400 text-slate-950 border-white scale-105 shadow-lg' 
-                                                : 'bg-emerald-800/90 hover:bg-emerald-600 text-white border-emerald-500 shadow'
-                                        }`}
+                                        onClick={() => handleCardClick(player)}
+                                        className={`flex flex-col items-center justify-center p-2 rounded cursor-pointer border ${isSelected ? 'bg-amber-400 text-slate-950 border-white' : 'bg-emerald-800 text-white border-emerald-500'}`}
                                     >
-                                        <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-black/30 mb-1">{player.number}</span>
-                                        <span className="text-sm font-extrabold truncate max-w-[80px]">{player.initials || player.name}</span>
-                                        <span className="text-[10px] opacity-80 uppercase">{player.pos}</span>
+                                        <span className="text-[10px] font-bold">{player.number}</span>
+                                        <span className="text-xs font-bold truncate max-w-[70px]">{player.initials || player.name}</span>
+                                        <span className="text-[9px] opacity-80">{player.pos}</span>
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
 
-                    {/* Subs Bench View */}
-                    <div 
-                        onClick={handleBackgroundClick}
-                        className="bg-slate-800/80 border border-slate-700 rounded-xl p-3 mb-4 min-h-[110px]"
-                    >
-                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Subs Bench</h2>
+                    {/* Subs */}
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 mb-3">
+                        <h2 className="text-xs font-bold text-slate-400 uppercase mb-2">Subs Bench</h2>
                         <div className="flex gap-2 overflow-x-auto pb-1">
                             {subs.map(player => {
                                 const isSelected = selectedPlayer?.id === player.id;
                                 return (
                                     <div 
                                         key={player.id}
-                                        onClick={(e) => { e.stopPropagation(); handleCardClick(player); }}
-                                        className={`flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer transition-all min-w-[70px] border shrink-0 ${
-                                            isSelected 
-                                                ? 'bg-amber-400 text-slate-950 border-white scale-105 shadow-lg' 
-                                                : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
-                                        }`}
+                                        onClick={() => handleCardClick(player)}
+                                        className={`flex flex-col items-center justify-center p-2 rounded cursor-pointer min-w-[65px] border shrink-0 ${isSelected ? 'bg-amber-400 text-slate-950 border-white' : 'bg-slate-700 text-white border-slate-600'}`}
                                     >
-                                        <span className="text-xs font-bold px-1 py-0.5 rounded bg-black/30 mb-1">{player.number}</span>
-                                        <span className="text-xs font-extrabold truncate max-w-[65px]">{player.initials || player.name}</span>
-                                        <span className="text-[9px] opacity-70">SUB</span>
+                                        <span className="text-[10px] font-bold">{player.number}</span>
+                                        <span className="text-xs font-bold truncate max-w-[60px]">{player.initials || player.name}</span>
                                     </div>
                                 );
                             })}
-                            {subs.length === 0 && (
-                                <p className="text-xs text-slate-500 italic py-2">No subs on bench</p>
-                            )}
                         </div>
                     </div>
 
-                    {/* Squad / Profile Modal */}
+                    {/* Squad Modal */}
                     {activeModal === 'profile' && (
                         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-4 max-h-[85vh] flex flex-col">
-                                <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
-                                    <h2 className="text-base font-bold text-white">Manage Squad</h2>
-                                    <button onClick={addPlayer} className="bg-emerald-600 hover:bg-emerald-500 text-xs px-3 py-1.5 rounded font-bold text-white">+ Add Player</button>
+                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-xl p-4 max-h-[85vh] flex flex-col">
+                                <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+                                    <h2 className="text-sm font-bold">Squad</h2>
+                                    <button onClick={addPlayer} className="bg-emerald-600 text-xs px-2 py-1 rounded text-white">+ Add</button>
                                 </div>
-                                <div className="overflow-y-auto flex-1 space-y-2 pr-1">
+                                <div className="overflow-y-auto flex-1 space-y-2">
                                     {players.map(p => (
-                                        <div key={p.id} className="flex items-center gap-2 bg-slate-800/60 p-2 rounded-lg border border-slate-700/60">
-                                            <input 
-                                                type="number" 
-                                                value={p.number} 
-                                                onChange={(e) => handlePlayerChange(p.id, 'number', parseInt(e.target.value) || '')}
-                                                className="w-12 bg-slate-900 border border-slate-700 text-center rounded py-1 text-sm font-bold text-white"
-                                            />
-                                            <input 
-                                                type="text" 
-                                                value={p.name} 
-                                                onChange={(e) => handlePlayerChange(p.id, 'name', e.target.value)}
-                                                className="flex-1 bg-slate-900 border border-slate-700 px-2 rounded py-1 text-sm text-white"
-                                                placeholder="Player Name"
-                                            />
-                                            <button 
-                                                onClick={() => handlePlayerChange(p.id, 'active', !p.active)}
-                                                className={`text-xs px-2.5 py-1 rounded font-bold ${p.active ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'}`}
-                                            >
-                                                {p.active ? 'On Pitch' : 'Bench'}
-                                            </button>
-                                            <button 
-                                                onClick={() => deletePlayer(p.id)}
-                                                className="bg-rose-900/50 hover:bg-rose-800 text-rose-200 text-xs px-2 py-1 rounded"
-                                            >
-                                                ✕
-                                            </button>
+                                        <div key={p.id} className="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700">
+                                            <input type="number" value={p.number} onChange={(e) => handlePlayerChange(p.id, 'number', parseInt(e.target.value) || '')} className="w-10 bg-slate-900 text-center rounded text-xs py-1" />
+                                            <input type="text" value={p.name} onChange={(e) => handlePlayerChange(p.id, 'name', e.target.value)} className="flex-1 bg-slate-900 px-2 rounded text-xs py-1" />
+                                            <button onClick={() => handlePlayerChange(p.id, 'active', !p.active)} className={`text-xs px-2 py-1 rounded ${p.active ? 'bg-emerald-600' : 'bg-slate-700'}`}>{p.active ? 'On' : 'Bench'}</button>
+                                            <button onClick={() => deletePlayer(p.id)} className="bg-rose-900 text-rose-200 text-xs px-2 py-1 rounded">✕</button>
                                         </div>
                                     ))}
                                 </div>
-                                <button 
-                                    onClick={() => setActiveModal(null)}
-                                    className="mt-3 w-full bg-slate-800 hover:bg-slate-700 text-sm font-medium py-2 rounded-lg border border-slate-700"
-                                >
-                                    Done
-                                </button>
+                                <button onClick={() => setActiveModal(null)} className="mt-3 bg-slate-800 text-xs py-2 rounded">Close</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Data Hub Modal */}
+                    {/* Data Modal */}
                     {activeModal === 'data' && (
                         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-4 max-h-[85vh] flex flex-col">
-                                <h2 className="text-base font-bold text-white mb-2">Data Backup & Restore</h2>
-                                <p className="text-xs text-slate-400 mb-3">Download a backup file or copy your JSON state to safeguard your lineup.</p>
-                                
-                                <div className="space-y-3 flex-1 overflow-y-auto">
-                                    <button onClick={downloadJSON} className="w-full bg-blue-600 hover:bg-blue-500 text-xs py-2 rounded font-bold text-white">Download Backup JSON File</button>
-                                    
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Upload Backup File:</label>
-                                        <input type="file" accept=".json" onChange={onFileImport} className="text-xs text-slate-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700" />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Export JSON Text:</label>
-                                        <textarea readOnly value={exportText} className="w-full h-24 bg-slate-950 border border-slate-800 text-xs font-mono p-2 rounded text-slate-300" />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Import JSON Text:</label>
-                                        <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste JSON here..." className="w-full h-24 bg-slate-950 border border-slate-800 text-xs font-mono p-2 rounded text-slate-300" />
-                                        <button onClick={importData} className="mt-1 w-full bg-emerald-600 hover:bg-emerald-500 text-xs py-1.5 rounded font-bold text-white">Import from Text</button>
-                                    </div>
+                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-xl p-4 max-h-[85vh] flex flex-col">
+                                <h2 className="text-sm font-bold mb-2">Data</h2>
+                                <div className="space-y-3 flex-1 overflow-y-auto text-xs">
+                                    <button onClick={downloadJSON} className="w-full bg-blue-600 py-2 rounded text-white font-bold">Download JSON Backup</button>
+                                    <input type="file" accept=".json" onChange={onFileImport} className="text-xs" />
+                                    <textarea readOnly value={exportText} className="w-full h-20 bg-slate-950 font-mono p-2 rounded text-slate-300" />
+                                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste JSON here..." className="w-full h-20 bg-slate-950 font-mono p-2 rounded text-slate-300" />
+                                    <button onClick={importData} className="w-full bg-emerald-600 py-1.5 rounded text-white font-bold">Import Text</button>
                                 </div>
-
-                                <button 
-                                    onClick={() => setActiveModal(null)}
-                                    className="mt-3 w-full bg-slate-800 hover:bg-slate-700 text-sm font-medium py-2 rounded-lg border border-slate-700"
-                                >
-                                    Close
-                                </button>
+                                <button onClick={() => setActiveModal(null)} className="mt-3 bg-slate-800 text-xs py-2 rounded">Close</button>
                             </div>
                         </div>
                     )}
